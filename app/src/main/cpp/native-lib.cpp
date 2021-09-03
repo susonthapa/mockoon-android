@@ -1,7 +1,65 @@
 #include <jni.h>
 #include <string>
 #include <cstdlib>
+#include <unistd.h>
+#include <pthread.h>
+#include <android/log.h>
 #include "libnode/node/node.h"
+
+// start threads to redirect stdout and stderr to logcat
+int pipe_stdout[2];
+int pipe_stderr[2];
+pthread_t threadStdout;
+pthread_t threadStderr;
+const char *ADBTAG = "Mockoon";
+
+void *thread_stderr_func(void *) {
+    ssize_t redirectSize;
+    char buf[2048];
+    while ((redirectSize = read(pipe_stderr[0], buf, sizeof buf - 1)) > 0) {
+        // android log will add a new line anyway
+        if (buf[redirectSize - 1] == '\n') {
+            --redirectSize;
+        }
+        buf[redirectSize] = 0;
+        __android_log_write(ANDROID_LOG_ERROR, ADBTAG, buf);
+    }
+}
+
+void *thread_stdout_func(void *) {
+    ssize_t redirectSize;
+    char buf[2048];
+    while ((redirectSize = read(pipe_stdout[0], buf, sizeof buf - 1)) > 0) {
+        if (buf[redirectSize - 1] == '\n') {
+            --redirectSize;
+        }
+        buf[redirectSize] = 0;
+        __android_log_write(ANDROID_LOG_INFO, ADBTAG, buf);
+    }
+}
+
+int start_redirecting_stdout_stderr() {
+    // set stdout as unbuffered
+    setvbuf(stdout, 0, _IONBF, 0);
+    pipe(pipe_stdout);
+    dup2(pipe_stdout[1], STDOUT_FILENO);
+
+    setvbuf(stderr, 0, _IONBF, 0);
+    pipe(pipe_stderr);
+    dup2(pipe_stderr[1], STDERR_FILENO);
+
+    if (pthread_create(&threadStdout, 0, thread_stdout_func, 0) == -1) {
+        return -1;
+    }
+    pthread_detach(threadStdout);
+
+    if (pthread_create(&threadStderr, 0, thread_stderr_func, 0) == -1) {
+        return -1;
+    }
+    pthread_detach(threadStderr);
+
+    return 0;
+}
 
 // node's libUV requires all arguments being on contiguous memory
 extern "C" JNIEXPORT jint JNICALL
@@ -43,9 +101,12 @@ Java_np_com_susanthapa_mockoonandroid_MainActivity_startNodeWithArguments(
         currentArgsPosition += strlen(currentArgsPosition) + 1;
     }
 
+    // start redirection
+    if (start_redirecting_stdout_stderr() == -1) {
+        __android_log_write(ANDROID_LOG_ERROR, ADBTAG, "Couldn't start redirecting stdout and stderr to logcat!");
+    }
     // start node with arguments
     int node_result = node::Start(argumentCount, nodeArgs);
-    free(argsBuffer);
 
     return jint(node_result);
 }
