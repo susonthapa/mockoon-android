@@ -1,36 +1,35 @@
 package np.com.susanthapa.mockoonandroid
 
-import androidx.appcompat.app.AppCompatActivity
+import android.content.Intent
 import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
-import android.os.Message
+import android.os.Environment
 import android.util.Log
-import android.widget.TextView
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AppCompatActivity
+import np.com.susanthapa.mockoon_android.MockoonAndroid
 import np.com.susanthapa.mockoonandroid.databinding.ActivityMainBinding
-import org.json.JSONObject
-import java.io.BufferedReader
 import java.io.File
-import java.io.InputStreamReader
-import java.net.URL
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
-    val tag = "Mockoon"
 
     // load native-lib and node
     companion object {
-        init {
-            System.loadLibrary("native-lib")
-            System.loadLibrary("node")
-        }
-
-        private var isNodeStared = false
         const val PREF_NAME = "NODEJS_MOBILE_PREFS"
         const val APK_UPDATE_KEY = "nodeApkLastUpdated"
 
     }
+
+    val resultLauncher =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+            if (it.resultCode == RESULT_OK && it.data != null) {
+                val mockoon =
+                    MockoonAndroid(uri = it.data?.data)
+                mockoon.startMock(this)
+            }
+        }
+
 
     private fun wasAPKUpdated(): Boolean {
         val prefs = applicationContext.getSharedPreferences(PREF_NAME, MODE_PRIVATE)
@@ -58,54 +57,13 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        if (!isNodeStared) {
-            isNodeStared = true
-            Thread {
-                Log.d(tag, "onCreate: node started")
-                val nodeDir = "${applicationContext.externalCacheDir?.absolutePath}/nodejs-project"
-                val nodeFile = File(nodeDir)
-                if (!nodeFile.exists()) {
-//                    if (nodeFile.exists()) {
-//                        FileSystemHelper.deleteFolderRecursively(nodeFile)
-//                    }
-                    // copy the files to the files system
-                    FileSystemHelper.copyAssetFolder(
-                        applicationContext.assets,
-                        "nodejs-project",
-                        nodeDir
-                    )
-                    Log.d(
-                        tag, "onCreate: copied files" +
-                                ""
-                    )
-                    saveLastUpdateTime()
-                }
-                // parse json file
-                val allEnv = File("${nodeDir}/server.json").inputStream()
-                    .bufferedReader().use { it.readText() }
-                val jsonEnv = JSONObject(allEnv).getJSONArray("data")
-                // loop through all environments and start it in separate threads
-                for (i in 0 until jsonEnv.length()) {
-                    val env = jsonEnv.getJSONObject(i).getJSONObject("item")
-                    Log.d(tag, "starting environment: ${env.getString("name")}")
-                    Log.d(tag, "starting environment: $env")
-                    Thread {
-                        startNodeWithArguments(
-                            arrayOf(
-                                "node",
-                                "${nodeDir}/main.js",
-                                env.toString(),
-                            )
-                        )
-                    }.start()
-                }
-            }.start()
+        binding.sendRequest.setOnClickListener {
+            val intent = Intent(Intent.ACTION_OPEN_DOCUMENT)
+            intent.addCategory(Intent.CATEGORY_OPENABLE)
+            intent.type = "*/*"
+            resultLauncher.launch(intent)
         }
     }
 
-    /**
-     * A native method that is implemented by the 'mockoonandroid' native library,
-     * which is packaged with this application.
-     */
-    private external fun startNodeWithArguments(arguments: Array<String>): Int
+
 }

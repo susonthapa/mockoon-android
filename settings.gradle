@@ -8,3 +8,4 @@ dependencyResolutionManagement {
 }
 rootProject.name = "Mockoon Android"
 include ':app'
+include ':mockoon-android'
