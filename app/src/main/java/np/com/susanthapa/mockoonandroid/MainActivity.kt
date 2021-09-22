@@ -1,56 +1,24 @@
 package np.com.susanthapa.mockoonandroid
 
+import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
-import android.os.Environment
-import android.util.Log
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
-import np.com.susanthapa.mockoon_android.MockoonAndroid
 import np.com.susanthapa.mockoonandroid.databinding.ActivityMainBinding
-import java.io.File
+import java.lang.Exception
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
 
-    // load native-lib and node
-    companion object {
-        const val PREF_NAME = "NODEJS_MOBILE_PREFS"
-        const val APK_UPDATE_KEY = "nodeApkLastUpdated"
-
-    }
-
-    val resultLauncher =
+    private val resultLauncher =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
             if (it.resultCode == RESULT_OK && it.data != null) {
-                val mockoon =
-                    MockoonAndroid(uri = it.data?.data)
-                mockoon.startMock(this)
+                startMock(uri = it.data?.data)
             }
         }
-
-
-    private fun wasAPKUpdated(): Boolean {
-        val prefs = applicationContext.getSharedPreferences(PREF_NAME, MODE_PRIVATE)
-        val prevUpdateTime = prefs.getLong(APK_UPDATE_KEY, 0)
-        val packageInfo =
-            applicationContext.packageManager.getPackageInfo(applicationContext.packageName, 0)
-        val lastUpdated = packageInfo.lastUpdateTime
-
-        return lastUpdated != prevUpdateTime
-    }
-
-    private fun saveLastUpdateTime() {
-        val packageInfo =
-            applicationContext.packageManager.getPackageInfo(applicationContext.packageName, 0)
-        val lastUpdated = packageInfo.lastUpdateTime
-        val prefs = applicationContext.getSharedPreferences(PREF_NAME, MODE_PRIVATE)
-        prefs.edit().apply {
-            putLong(APK_UPDATE_KEY, lastUpdated)
-            apply()
-        }
-    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -62,6 +30,22 @@ class MainActivity : AppCompatActivity() {
             intent.addCategory(Intent.CATEGORY_OPENABLE)
             intent.type = "*/*"
             resultLauncher.launch(intent)
+        }
+    }
+
+    private fun startMock(mockPath: String? = null, uri: Uri? = null) {
+        if (BuildConfig.BUILD_TYPE == "mock") {
+            // use reflection as we don't want to include this in other build variants
+            try {
+                val mockClass = Class.forName("np.com.susanthapa.mockoon_android.MockoonAndroid")
+                val constructor = mockClass.getConstructor(String::class.java, Uri::class.java)
+                val mock = constructor.newInstance(mockPath, uri)
+                val startMethod = mockClass.getMethod("startMock", Context::class.java)
+                startMethod.invoke(mock, this)
+
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
         }
     }
 
