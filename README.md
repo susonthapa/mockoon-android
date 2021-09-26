@@ -1,7 +1,11 @@
 # mockoon-android
 Mockoon for Android
 
-This is the android port of mocking server [Mockoon](https://github.com/mockoon/mockoon). Export your mockoon environemnt and then run it in android.
+This is the android port of mocking server [Mockoon](https://github.com/mockoon/mockoon). Export your mockoon environment and then run it in android.
+![image](https://user-images.githubusercontent.com/33973551/134814817-df548b5e-7bda-4e95-838a-737d039be701.png)
+
+### Demo
+![mockoon-demo](https://user-images.githubusercontent.com/33973551/134814853-6596ce81-127e-41f0-9614-472bca27bd7e.gif)
 
 ### Usage
 This library will add around **60MB** to your app, so you might want to create a dedicated variant.
@@ -21,7 +25,7 @@ Add this dependency in your app layer's `build.gradle`.
 ```
 
 #### Start Mockoon
-Use reflection to start mockoon as gradle won't file the dependency for all variants. Create a helper function to start the server like this.
+Use reflection to start mockoon as gradle won't be able to resolve the dependency for all variants. Create a helper function to start the server like this.
 ```kotlin
     private fun startMock(mockPath: String? = null, uri: Uri? = null) {
         if (BuildConfig.BUILD_TYPE == "mock") {
