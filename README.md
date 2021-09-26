@@ -1,5 +1,5 @@
 # mockoon-android
-Mockoon for Android
+Mockoon for Android. More details can be found in [this](https://susuthapa19961227.medium.com/embedding-mockoon-on-android-5c240f2a3143) blog post.
 
 This is the android port of mocking server [Mockoon](https://github.com/mockoon/mockoon). Export your mockoon environment and then run it in android.
 ![image](https://user-images.githubusercontent.com/33973551/134814817-df548b5e-7bda-4e95-838a-737d039be701.png)
